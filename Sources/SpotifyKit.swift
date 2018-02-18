@@ -435,7 +435,7 @@ public class SpotifyManager {
         return token!.accessToken
     }
     public func getRefreshToken() -> String {
-        return token!.accessToken
+        return token!.refreshToken
     }
     public func getTokenExpiresIn() -> Int {
         return token!.expiresIn
