@@ -381,7 +381,7 @@ public class SpotifyManager {
     }
     
     /**
-     Gets the curernt Spotify user's profile
+     Gets the current Spotify user's profile
      - parameter completionHandler: the handler that is executed with the user as parameter
      */
     public func myProfile(completionHandler: @escaping (SpotifyUser) -> Void) {
@@ -428,6 +428,23 @@ public class SpotifyManager {
     #endif
     
     /**
+     Retrieves Tokens
+     Use to transfert to watchos for example
+     */
+    public func getAccessToken() -> String {
+        return token!.accessToken
+    }
+    public func getRefreshToken() -> String {
+        return token!.accessToken
+    }
+    public func getTokenExpiresIn() -> Int {
+        return token!.expiresIn
+    }
+    public func getTokenType() -> String {
+        return token!.tokenType
+    }
+    
+    /**
      Retrieves the authorization code after the authentication process has succeded
      and completes token saving.
      - parameter url: the URL with code sent by Spotify after authentication success
@@ -466,8 +483,8 @@ public class SpotifyManager {
                     debugPrint(token.details)
                     
                     switch self.tokenSavingMethod {
-                    case .preference:
-                        token.writeToKeychain()
+                        case .preference:
+                            token.writeToKeychain()
                     }
                 }
             }
@@ -490,7 +507,14 @@ public class SpotifyManager {
                                   tokenType: tokenType)
         
         // Prints the token for debug
-        if let token = self.token { debugPrint(token.details) }
+        if let token = self.token {
+            debugPrint(token.details)
+            
+            switch self.tokenSavingMethod {
+                case .preference:
+                    token.writeToKeychain()
+            }
+        }
     }
     
     /**
