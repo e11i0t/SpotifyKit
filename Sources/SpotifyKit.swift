@@ -407,6 +407,7 @@ public class SpotifyManager {
      you then have to manually copy the 'code' from the opened url
      and insert it to get the actual token
      */
+    #if os(OSX) || os(iOS)
     public func authorize() {
         // Only proceed with authorization if we have no token
         guard !hasToken else { return }
@@ -424,6 +425,7 @@ public class SpotifyManager {
             #endif
         }
     }
+    #endif
     
     /**
      Retrieves the authorization code after the authentication process has succeded
