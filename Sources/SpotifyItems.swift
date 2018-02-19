@@ -121,7 +121,19 @@ public struct SpotifyAlbum: SpotifySearchItem, SpotifyLibraryItem, SpotifyTrackC
         return artists.first!
     }
     
+    public var artSmallUri: String {
+        return images.last!.url
+    }
+    
     public var artUri: String {
+        if images.count > 2 {
+            return images[1].url
+        }else{
+            return images.first!.url
+        }
+    }
+    
+    public var artLargeUri: String {
         return images.first!.url
     }
 }
