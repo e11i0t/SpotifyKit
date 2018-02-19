@@ -72,6 +72,8 @@ public struct SpotifyUser: SpotifySearchItem {
     }
 }
 
+
+
 public struct SpotifyTrack: SpotifySearchItem, SpotifyLibraryItem {
     public var id:    String
     public var uri:   String
@@ -122,6 +124,11 @@ public struct SpotifyAlbum: SpotifySearchItem, SpotifyLibraryItem, SpotifyTrackC
     public var artUri: String {
         return images.first!.url
     }
+}
+
+public struct SpotifyCurrentItem: Decodable {
+    public var is_playing: Bool
+    public var item: SpotifyTrack
 }
 
 public struct SpotifyPlaylist: SpotifySearchItem, SpotifyLibraryItem, SpotifyTrackCollection {
