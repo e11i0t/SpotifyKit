@@ -62,7 +62,7 @@ fileprivate enum SpotifyQuery: String, URLConvertible {
         switch self {
         case .master, .account:
             return URL(string: self.rawValue)
-        case .search, .users, .me, .contains, .current:
+        case .search, .users, .me, .contains, .current, .play, .pause, .previous, .next:
             return URL(string: SpotifyQuery.master.rawValue + self.rawValue)
         case .authorize, .token:
             return URL(string: SpotifyQuery.account.rawValue + self.rawValue)
@@ -87,6 +87,10 @@ fileprivate enum SpotifyQuery: String, URLConvertible {
     
     // Player
     case current   = "me/player/currently-playing"
+    case play      = "me/player/play"
+    case pause     = "me/player/pause"
+    case next      = "me/player/next"
+    case previous  = "me/player/previous"
     
     static func libraryUrlFor<T>(_ what: T.Type) -> URL? where T: SpotifyLibraryItem {
         return URL(string: master.rawValue + me.rawValue + what.type.searchKey.rawValue)
@@ -388,7 +392,6 @@ public class SpotifyManager {
      - parameter completionHandler: the handler that is executed with the user as parameter
      */
     public func currentTrack(completionHandler: @escaping (SpotifyCurrentItem) -> Void) {
-        print(SpotifyQuery.current)
         tokenQuery { token in
             URLSession.shared.request(SpotifyQuery.current,
                                       method: .GET,
@@ -399,6 +402,66 @@ public class SpotifyManager {
                                                            from: data) {
                     completionHandler(result)
                 }
+            }
+        }
+    }
+    
+    /**
+     resume playing current track
+     - parameter completionHandler: the handler that is executed with the user as parameter
+     */
+    public func playCurrentTrack(completionHandler: @escaping () -> Void) {
+        tokenQuery { token in
+            URLSession.shared.request(SpotifyQuery.play,
+                                      method: .PUT,
+                                      headers: self.authorizationHeader(with: token))
+            { result in
+                completionHandler()
+            }
+        }
+    }
+    
+    /**
+     pause current track
+     - parameter completionHandler: the handler that is executed with the user as parameter
+     */
+    public func pauseCurrentTrack(completionHandler: @escaping () -> Void) {
+        tokenQuery { token in
+            URLSession.shared.request(SpotifyQuery.pause,
+                                      method: .PUT,
+                                      headers: self.authorizationHeader(with: token))
+            { result in
+                completionHandler()
+            }
+        }
+    }
+    
+    /**
+     pause current track
+     - parameter completionHandler: the handler that is executed with the user as parameter
+     */
+    public func previousTrack(completionHandler: @escaping () -> Void) {
+        tokenQuery { token in
+            URLSession.shared.request(SpotifyQuery.previous,
+                                      method: .PUT,
+                                      headers: self.authorizationHeader(with: token))
+            { result in
+                completionHandler()
+            }
+        }
+    }
+    
+    /**
+     pause current track
+     - parameter completionHandler: the handler that is executed with the user as parameter
+     */
+    public func nextTrack(completionHandler: @escaping () -> Void) {
+        tokenQuery { token in
+            URLSession.shared.request(SpotifyQuery.next,
+                                      method: .PUT,
+                                      headers: self.authorizationHeader(with: token))
+            { result in
+                completionHandler()
             }
         }
     }
