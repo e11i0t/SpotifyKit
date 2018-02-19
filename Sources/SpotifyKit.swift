@@ -62,7 +62,7 @@ fileprivate enum SpotifyQuery: String, URLConvertible {
         switch self {
         case .master, .account:
             return URL(string: self.rawValue)
-        case .search, .users, .me, .contains:
+        case .search, .users, .me, .contains, .current:
             return URL(string: SpotifyQuery.master.rawValue + self.rawValue)
         case .authorize, .token:
             return URL(string: SpotifyQuery.account.rawValue + self.rawValue)
@@ -84,6 +84,9 @@ fileprivate enum SpotifyQuery: String, URLConvertible {
     // User's library
     case me        = "me/"
     case contains  = "me/tracks/contains"
+    
+    // Player
+    case current   = "me/player/currently-playing"
     
     static func libraryUrlFor<T>(_ what: T.Type) -> URL? where T: SpotifyLibraryItem {
         return URL(string: master.rawValue + me.rawValue + what.type.searchKey.rawValue)
@@ -376,6 +379,26 @@ public class SpotifyManager {
         find(SpotifyTrack.self, "\(title) \(artist)") { results in
             if let track = results.first {
                 completionHandler(track)
+            }
+        }
+    }
+    
+    /**
+     Gets the current Spotify user's profile
+     - parameter completionHandler: the handler that is executed with the user as parameter
+     */
+    public func currentTrack(completionHandler: @escaping (SpotifyCurrentItem) -> Void) {
+        print(SpotifyQuery.current)
+        tokenQuery { token in
+            URLSession.shared.request(SpotifyQuery.current,
+                                      method: .GET,
+                                      headers: self.authorizationHeader(with: token))
+            { result in
+                if  case let .success(data) = result,
+                    let result = try? JSONDecoder().decode(SpotifyCurrentItem.self,
+                                                           from: data) {
+                    completionHandler(result)
+                }
             }
         }
     }
