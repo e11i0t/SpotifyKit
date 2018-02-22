@@ -517,17 +517,26 @@ public class SpotifyManager {
      Retrieves Tokens
      Use to transfert to watchos for example
      */
+    public func onTokensReady(completionHandler: @escaping () -> Void) {
+        tokenQuery { token in
+            completionHandler()
+        }
+    }
     public func getAccessToken() -> String {
-        return token!.accessToken
+        guard let token = self.token else { return "" }
+        return token.accessToken
     }
     public func getRefreshToken() -> String {
-        return token!.refreshToken
+        guard let token = self.token else { return "" }
+        return token.refreshToken
     }
     public func getTokenExpiresIn() -> Int {
-        return token!.expiresIn
+        guard let token = self.token else { return 0 }
+        return token.expiresIn
     }
     public func getTokenType() -> String {
-        return token!.tokenType
+        guard let token = self.token else { return "" }
+        return token.tokenType
     }
     
     /**
