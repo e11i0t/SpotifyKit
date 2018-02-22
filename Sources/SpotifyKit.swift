@@ -393,6 +393,7 @@ public class SpotifyManager {
      */
     public func currentTrack(completionHandler: @escaping (SpotifyCurrentItem) -> Void) {
         tokenQuery { token in
+            print("call currentTrack")
             URLSession.shared.request(SpotifyQuery.current,
                                       method: .GET,
                                       headers: self.authorizationHeader(with: token))
@@ -401,6 +402,8 @@ public class SpotifyManager {
                     let result = try? JSONDecoder().decode(SpotifyCurrentItem.self,
                                                            from: data) {
                     completionHandler(result)
+                }else{
+                    debugPrint(result)
                 }
             }
         }
@@ -443,7 +446,7 @@ public class SpotifyManager {
     public func previousTrack(completionHandler: @escaping () -> Void) {
         tokenQuery { token in
             URLSession.shared.request(SpotifyQuery.previous,
-                                      method: .PUT,
+                                      method: .POST,
                                       headers: self.authorizationHeader(with: token))
             { result in
                 completionHandler()
@@ -458,7 +461,7 @@ public class SpotifyManager {
     public func nextTrack(completionHandler: @escaping () -> Void) {
         tokenQuery { token in
             URLSession.shared.request(SpotifyQuery.next,
-                                      method: .PUT,
+                                      method: .POST,
                                       headers: self.authorizationHeader(with: token))
             { result in
                 completionHandler()
