@@ -83,6 +83,8 @@ public struct SpotifyTrack: SpotifySearchItem, SpotifyLibraryItem {
     // so it should be an optional
     public var album: SpotifyAlbum?
     
+    public var duration_ms: Int?
+    
     public static let type: SpotifyItemType = .track
     
     var artists = [SpotifyArtist]()
@@ -139,6 +141,7 @@ public struct SpotifyAlbum: SpotifySearchItem, SpotifyLibraryItem, SpotifyTrackC
 }
 
 public struct SpotifyCurrentItem: Decodable {
+    public var progress_ms: Int
     public var is_playing: Bool
     public var item: SpotifyTrack
 }
