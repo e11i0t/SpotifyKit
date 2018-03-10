@@ -79,16 +79,21 @@ extension URLSession {
         request.allHTTPHeaderFields = headers
         request.httpMethod          = method.rawValue
 
-        if let parameters = parameters?.httpCompatible {
+        if let parametersHttpCompatible = parameters?.httpCompatible {
             switch method {
-            case .GET, .PUT, .DELETE:
-                request.url = url.with(parameters: parameters)
+            case .GET, .DELETE:
+                request.url = url.with(parameters: parametersHttpCompatible)
             case .POST:
-                request.httpBody = parameters.data(using: .utf8)
+                request.httpBody = parametersHttpCompatible.data(using: .utf8)
+            case .PUT:
+                do {
+                    let requestObject = try JSONSerialization.data(withJSONObject: parameters)
+                    request.httpBody = requestObject
+                } catch {}
             }
         }
         
-        let task = URLSession.shared.dataTask(with: request) { data, response, 
+        let task = URLSession.shared.dataTask(with: request) { data, response,
             error in
             guard   let data = data,
                     let response = response as? HTTPURLResponse,
