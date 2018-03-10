@@ -42,6 +42,9 @@ fileprivate struct SpotifyParameter {
     
     // User's library
     static let ids          = "ids"
+    
+    // Playlist
+    static let contextUri  = "context_uri"
 }
 
 /**
@@ -62,7 +65,7 @@ fileprivate enum SpotifyQuery: String, URLConvertible {
         switch self {
         case .master, .account:
             return URL(string: self.rawValue)
-        case .search, .users, .me, .contains, .current, .play, .pause, .previous, .next:
+        case .search, .users, .me, .contains, .playlists, .albums, .current, .play, .pause, .previous, .next:
             return URL(string: SpotifyQuery.master.rawValue + self.rawValue)
         case .authorize, .token:
             return URL(string: SpotifyQuery.account.rawValue + self.rawValue)
@@ -84,6 +87,8 @@ fileprivate enum SpotifyQuery: String, URLConvertible {
     // User's library
     case me        = "me/"
     case contains  = "me/tracks/contains"
+    case playlists = "me/playlists"
+    case albums    = "me/albums"
     
     // Player
     case current   = "me/player/currently-playing"
@@ -117,10 +122,13 @@ fileprivate enum SpotifyQuery: String, URLConvertible {
  // TODO: test this more
  */
 fileprivate enum SpotifyScope: String {
-    case readPrivate   = "user-read-private"
-    case readEmail     = "user-read-email"
+    case privateRead   = "user-read-private"
+    case emailRead     = "user-read-email"
     case libraryModify = "user-library-modify"
     case libraryRead   = "user-library-read"
+    case playingRead   = "user-read-currently-playing"
+    case stateRead     = "user-read-playback-state"
+    case stateModify   = "user-modify-playback-state"
     
     /**
      Creates a string to pass as parameter value
@@ -270,10 +278,12 @@ public class SpotifyManager {
         
         var details: NSString {
             return  """
+            ------------
             Access token:  \(accessToken)
             Expires in:    \(expiresIn)
             Refresh token: \(refreshToken)
             Token type:    \(tokenType)
+            ------------
             """ as NSString
         }
     }
@@ -304,6 +314,7 @@ public class SpotifyManager {
         guard let token = self.token else { return }
         
         guard !token.isExpired else {
+            print("[SpotifyKit] token is expired")
             // If the token is expired, refresh it first
             // Then try repeating the operation
             refreshToken { refreshed in
@@ -372,6 +383,56 @@ public class SpotifyManager {
     }
     
     /**
+     Get Current User's Saved Playlists
+     - parameter limit: max playlists
+     - parameter offset: starting index
+     - parameter completionHandler: the handler that is executed with playlists as parameter
+     */
+    public func getPlaylists(limit: Int,
+                             offset: Int,
+                             completionHandler: @escaping (SpotifyCurrentPlaylists) -> Void) {
+        tokenQuery { token in
+            URLSession.shared.request(SpotifyQuery.playlists,
+                                      method: .GET,
+                                      headers: self.authorizationHeader(with: token))
+            { result in
+                if  case let .success(data) = result,
+                    let result = try? JSONDecoder().decode(SpotifyCurrentPlaylists.self,
+                                                           from: data) {
+                    completionHandler(result)
+                }else{
+                    print("[SpotifyKit] Warning: no playlists saved")
+                }
+            }
+        }
+    }
+    
+    /**
+     Get Current User's Saved Albums
+     - parameter limit: max albums
+     - parameter offset: starting index
+     - parameter completionHandler: the handler that is executed with albums as parameter
+     */
+    public func getAlbums(limit: Int,
+                          offset: Int,
+                          completionHandler: @escaping (SpotifyCurrentAlbums) -> Void) {
+        tokenQuery { token in
+            URLSession.shared.request(SpotifyQuery.albums,
+                                      method: .GET,
+                                      headers: self.authorizationHeader(with: token))
+            { result in
+                if  case let .success(data) = result,
+                    let result = try? JSONDecoder().decode(SpotifyCurrentAlbums.self,
+                                                           from: data) {
+                    completionHandler(result)
+                }else{
+                    print("[SpotifyKit] Warning: no albums saved")
+                }
+            }
+        }
+    }
+    
+    /**
      Finds the first track on Spotify matching search results for
      - parameter title: the title of the track
      - parameter artist: the artist of the track
@@ -393,7 +454,6 @@ public class SpotifyManager {
      */
     public func currentTrack(completionHandler: @escaping (SpotifyCurrentItem) -> Void) {
         tokenQuery { token in
-            print("call currentTrack")
             URLSession.shared.request(SpotifyQuery.current,
                                       method: .GET,
                                       headers: self.authorizationHeader(with: token))
@@ -403,8 +463,28 @@ public class SpotifyManager {
                                                            from: data) {
                     completionHandler(result)
                 }else{
-                    debugPrint(result)
+                    print("[SpotifyKit] currentTrack failed")
                 }
+            }
+        }
+    }
+    
+    /**
+     play from uri
+     - parameter completionHandler: the handler that is executed with the user as parameter
+     */
+    public func play(uri: String, completionHandler: @escaping () -> Void) {
+        print("[SpotifyKit] Play URI: " + uri)
+        let parameters: HTTPRequestParameters = [
+            "context_uri": uri
+        ]
+        tokenQuery { token in
+            URLSession.shared.request(SpotifyQuery.play,
+                                      method: .PUT,
+                                      parameters:  parameters,
+                                      headers: self.authorizationHeader(with: token))
+            { result in
+                completionHandler()
             }
         }
     }
@@ -525,6 +605,7 @@ public class SpotifyManager {
             completionHandler()
         }
     }
+    
     public func getAccessToken() -> String {
         guard let token = self.token else { return "" }
         return token.accessToken
@@ -535,7 +616,7 @@ public class SpotifyManager {
     }
     public func getTokenExpiresIn() -> Int {
         guard let token = self.token else { return 0 }
-        return token.expiresIn
+        return Int(Double(token.expiresIn) - (Date.timeIntervalSinceReferenceDate - token.saveTime))
     }
     public func getTokenType() -> String {
         guard let token = self.token else { return "" }
@@ -604,6 +685,9 @@ public class SpotifyManager {
                                   refreshToken: refreshToken,
                                   tokenType: tokenType)
         
+        // When call from Watch, we need to save the date
+        self.token?.saveTime = Date.timeIntervalSinceReferenceDate
+        
         // Prints the token for debug
         if let token = self.token {
             debugPrint(token.details)
@@ -629,6 +713,7 @@ public class SpotifyManager {
      Refreshes the token when expired
      */
     public func refreshToken(completionHandler: @escaping (Bool) -> ()) {
+        print("[SpotifyKit] refreshToken")
         guard let application = application, let token = self.token else { return }
         
         URLSession.shared.request(SpotifyQuery.token,
@@ -644,7 +729,6 @@ public class SpotifyManager {
                 
                 // Prints the token for debug
                 if let token = self.token {
-                    debugPrint(token.details)
                     
                     // Run completion handler
                     // only after the token has been saved
@@ -804,7 +888,7 @@ public class SpotifyManager {
         return [SpotifyParameter.clientId: application.clientId,
                 SpotifyParameter.responseType: SpotifyAuthorizationResponseType.code.rawValue,
                 SpotifyParameter.redirectUri: application.redirectUri,
-                SpotifyParameter.scope: SpotifyScope.string(with: [.readPrivate, .readEmail, .libraryModify, .libraryRead])]
+                SpotifyParameter.scope: SpotifyScope.string(with: [.privateRead, .emailRead, .libraryModify, .libraryRead, .playingRead, .stateRead, .stateModify])]
     }
     
     /**
