@@ -61,111 +61,75 @@ public struct SpotifyUser: SpotifySearchItem {
     public var name: String { return display_name ?? id }
     
     public static let type: SpotifyItemType = .user
-    
     public var email: String?
+    public var artUri: String { return images.first?.url ?? "" }
     
-    var display_name: String?
+    //private
     var images:       [SpotifyImage]
-    
-    public var artUri: String {
-        return images.first?.url ?? ""
-    }
+    var display_name: String?
 }
-
-
 
 public struct SpotifyTrack: SpotifySearchItem, SpotifyLibraryItem {
     public var id:    String
     public var uri:   String
     public var name:  String
     
-    // Simplified track objects don't contain album reference
-    // so it should be an optional
-    public var album: SpotifyAlbum?
-    
+    public var album: SpotifyAlbum? // Simplified track objects are optional
     public var duration_ms: Int?
+    public var artist: SpotifyArtist { return artists.first! }
     
     public static let type: SpotifyItemType = .track
-    
+    // private
     var artists = [SpotifyArtist]()
-    
-    public var artist: SpotifyArtist {
-        return artists.first!
-    }
 }
 
-public struct SpotifyAlbum: SpotifySearchItem, SpotifyLibraryItem, SpotifyTrackCollection {
-    struct Tracks: Decodable {
-        var items: [SpotifyTrack]
-    }
-    
-    struct Image: Decodable {
-        var url: String
-    }
+public struct SpotifyAlbum: SpotifySearchItem, SpotifyTrackCollection {
+    struct Image: Decodable { var url: String }
+    struct Tracks: Decodable { var items: [SpotifyTrack] }
     
     public var id:   String
     public var uri:  String
     public var name: String
-    
-    // Track list is contained only in full album objects
-    var tracks: Tracks?
-    
-    public var collectionTracks: [SpotifyTrack]? {
-        return tracks?.items
-    }
     
     public static let type: SpotifyItemType = .album
+    public var collectionTracks: [SpotifyTrack]? { return tracks?.items }
+    public var artist: SpotifyArtist { return artists.first! }
+    public var artSmallUri: String { return images.last!.url }
+    public var artUri: String { return images.count > 2 ? images[1].url : images.first!.url }
+    public var artLargeUri: String { return images.first!.url }
     
+    // private
+    var tracks: Tracks? // Track list is contained only in full album objects
     var images  = [Image]()
     var artists = [SpotifyArtist]()
-    
-    public var artist: SpotifyArtist {
-        return artists.first!
-    }
-    
-    public var artSmallUri: String {
-        return images.last!.url
-    }
-    
-    public var artUri: String {
-        if images.count > 2 {
-            return images[1].url
-        }else{
-            return images.first!.url
-        }
-    }
-    
-    public var artLargeUri: String {
-        return images.first!.url
-    }
 }
 
-public struct SpotifyCurrentItem: Decodable {
-    public var progress_ms: Int
-    public var is_playing: Bool
-    public var item: SpotifyTrack
-}
-
-public struct SpotifyPlaylist: SpotifySearchItem, SpotifyLibraryItem, SpotifyTrackCollection {
+public struct SpotifyPlaylist: SpotifySearchItem {
+    struct Image: Decodable { var url: String }
     struct Tracks: Decodable {
-        struct Item: Decodable {
-            var track: SpotifyTrack
-        }
+        struct Item: Decodable { var track: SpotifyTrack }
         
         var items: [Item]?
+        var href: String
+        var total: Int
     }
     
     public var id:   String
     public var uri:  String
     public var name: String
     
+    public var collectionTracks: [SpotifyTrack]? { return tracks.items?.map { $0.track } }
+    public var tracksCount: Int { return tracks.total }
+    public var tracksUri: String { return tracks.href }
+    public var artSmallUri: String { return images.last!.url }
+    public var artUri: String { return images.count > 2 ? images[1].url : images.first!.url }
+    public var artLargeUri: String { return images.first!.url }
+    
+    public static var type: SpotifyItemType = .playlist
+    
+    // privates
     var tracks: Tracks
-    
-    public var collectionTracks: [SpotifyTrack]? {
-        return tracks.items?.map { $0.track }
-    }
-    
-    public static let type: SpotifyItemType = .playlist
+    var images  = [Image]()
 }
 
 public struct SpotifyArtist: SpotifySearchItem {
@@ -173,8 +137,48 @@ public struct SpotifyArtist: SpotifySearchItem {
     public var uri:  String
     public var name: String
     
-    public static let type: SpotifyItemType = .artist
+    public static var type: SpotifyItemType = .artist
 }
+
+
+//
+// Objects response from API
+//
+public struct SpotifyCurrentItem: Decodable {
+    public var progress_ms: Int
+    public var is_playing: Bool
+    public var item: SpotifyTrack
+}
+
+public struct SpotifyCurrentPlaylists: Decodable {
+    public var collectionPlaylists: [SpotifyPlaylist] { return items }
+    public var limit: Int
+    public var total: Int
+    public var offset: Int
+    
+    // private
+    var items: [SpotifyPlaylist]
+}
+
+public struct SpotifyCurrentAlbums: Decodable {
+    struct CurrentAlbum: Decodable {
+        var added_at: String
+        var album: SpotifyAlbum
+    }
+    
+    public var collectionAlbums: [SpotifyAlbum] { return items.map { $0.album } }
+    public var limit: Int
+    public var total: Int
+    public var offset: Int
+    
+    // private
+    var items: [CurrentAlbum]
+}
+
+
+//
+////
+//
 
 public struct SpotifyLibraryResponse<T> where T: SpotifyLibraryItem {
     struct SavedItem {
